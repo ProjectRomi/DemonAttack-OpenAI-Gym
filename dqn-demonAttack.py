@@ -69,13 +69,12 @@ ACTION_LEFT_AND_FIRE = 5
 
 if __name__ == "__main__":
     env = gym.make('DemonAttack-v0')
-    state_size = np.prod(env.observation_space.shape) #210
+    state_size = np.prod(env.observation_space.shape) #210*__*3
     action_size = env.action_space.n # 6 actions
     agent = DQNAgent(state_size, action_size)
     done = False
     batch_size = 32
 
-    prev_score_pixels = None
     for e in range(EPISODES):
         state = env.reset() # shape: (210, 160, 3)
         for time in range(500):
@@ -83,22 +82,14 @@ if __name__ == "__main__":
             model_input = state.flatten().reshape([1 ,state_size])
             action = agent.act(model_input)
             next_state, reward, done, _ = env.step(action)
-
             next_model_input = next_state.flatten().reshape([1 ,state_size])
-            next_score_pixels = next_state[0:20, :, 1].flatten()
-            if not (prev_score_pixels == next_score_pixels).all():
-                reward = 100
-            else:
-                reward = 0
-            prev_score_pixels = next_score_pixels[:]
 
             reward = reward if not done else -200
 
             agent.remember(model_input, action, reward, next_model_input, done)
 
             state = next_state
-            print("episode: {}/{}, score: {}, e: {:.2}, reward:{}"
-                      .format(e, EPISODES, time, agent.epsilon, reward))
+            print("episode: {}/{}, score: {}, e: {:.2}, reward:{}".format(e, EPISODES, time, agent.epsilon, reward))
             if done:
                 break
         if len(agent.memory) > batch_size:
