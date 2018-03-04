@@ -24,11 +24,11 @@ class DQNAgent:
         self.state_size = state_size
         self.action_size = action_size
         self.memory = deque(maxlen=2000)
-        self.gamma = 0.95    # discount rate
-        self.epsilon = 1.0  # exploration rate
+        self.gamma = 0.85 #0.95    # discount rate
+        self.epsilon = 0.95  # exploration rate
         self.epsilon_min = 0.01
-        self.epsilon_decay = 0.97 #0.995
-        self.learning_rate = 0.001
+        self.epsilon_decay = 0.98 #0.995
+        self.learning_rate = 0.01 #0.001
         self.model = self.build_model()
 
     def build_model(self):
@@ -88,9 +88,9 @@ ACTION_LEFT_AND_FIRE = 5
 from skimage.transform import resize
 from skimage.color import rgb2gray
 
-prev_frame_0 = np.zeros((WIDTH, HEIGHT))
-prev_frame_1 = np.zeros((WIDTH, HEIGHT))
-prev_frame_2 = np.zeros((WIDTH, HEIGHT))
+prev_frame_0 = np.zeros((1, WIDTH, HEIGHT))
+prev_frame_1 = np.zeros((1, WIDTH, HEIGHT))
+prev_frame_2 = np.zeros((1, WIDTH, HEIGHT))
 
 def get_preprocessed_frame(observation):
     """
@@ -104,7 +104,7 @@ def get_preprocessed_frame(observation):
 
     prev_frame_0 = prev_frame_1[:]
     prev_frame_1 = prev_frame_2
-    prev_frame_2 = resize(rgb2gray(observation), (WIDTH, HEIGHT))
+    prev_frame_2 = resize(rgb2gray(observation), (WIDTH, HEIGHT)).reshape([1, WIDTH, HEIGHT])
     return np.concatenate([prev_frame_0, prev_frame_1, prev_frame_2]).reshape([1, CHANNELS, WIDTH, HEIGHT])
 
 if __name__ == "__main__":
@@ -122,16 +122,16 @@ if __name__ == "__main__":
         state = env.reset() # shape: (210, 160, 3)
         lives = 0;
         last_updated = 0;
-        for time in range(1000):
+        for time in range(1, 5000):
             env.render()
             model_input = get_preprocessed_frame(state)
             action = agent.act(model_input)
             next_state, reward, done, info = env.step(action)
             next_model_input = get_preprocessed_frame(next_state)
 
-            reward = -50 if reward == 0 else reward
+            reward = -1 if reward == 0 else reward
             reward = -20 if lives > info['ale.lives'] else reward
-            reward = reward if not done else -80
+            reward = reward if not done else -20
             lives = info['ale.lives']
 
             agent.remember(model_input, action, reward, next_model_input, done)
@@ -140,6 +140,9 @@ if __name__ == "__main__":
             print("episode: {}/{}, score: {}, e: {:.2}, reward:{}, life:{}, epsilon: {}".format(e, EPISODES, time, agent.epsilon, reward, info, agent.epsilon * 100))
             if done:
                 break
+
+            if time % 1000 == 0:
+                agent.replay(batch_size)
         if len(agent.memory) > batch_size:
             start = timer()
             agent.replay(batch_size)
